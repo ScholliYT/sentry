@@ -1,4 +1,4 @@
-import {ComponentProps, Fragment, ReactChild} from 'react';
+import {ComponentProps, Fragment, ReactChild, useCallback} from 'react';
 import {css, useTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 
@@ -11,13 +11,22 @@ interface GroupPreviewHovercardProps extends ComponentProps<typeof Hovercard> {
   hide?: boolean;
 }
 
-const GroupPreviewHovercard = ({
+export const GroupPreviewHovercard = ({
   className,
   children,
   hide,
+  body,
   ...props
 }: GroupPreviewHovercardProps) => {
   const theme = useTheme();
+
+  // Not sure why we need to stop propagation, maybe to prevent the
+  // hovercard from closing? If we are doing this often, maybe it should be
+  // part of the hovercard component.
+  const handleStackTracePreviewClick = useCallback(
+    (e: React.MouseEvent) => void e.stopPropagation(),
+    []
+  );
 
   // No need to preview on hover for small devices
   const shouldNotPreview = useMedia(`(max-width: ${theme.breakpoints.large})`);
@@ -33,6 +42,7 @@ const GroupPreviewHovercard = ({
       tipBorderColor="border"
       tipColor="background"
       hide={hide}
+      body={<div onClick={handleStackTracePreviewClick}>{body}</div>}
       {...props}
     >
       {children}
@@ -77,5 +87,3 @@ const StyledHovercard = styled(Hovercard)<{hide?: boolean}>`
     }
   }
 `;
-
-export default GroupPreviewHovercard;
