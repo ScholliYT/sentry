@@ -15,6 +15,7 @@ import {
 } from 'sentry/actionCreators/indicator';
 import {updateOnboardingTask} from 'sentry/actionCreators/onboardingTasks';
 import Access from 'sentry/components/acl/access';
+import Feature from 'sentry/components/acl/feature';
 import Alert from 'sentry/components/alert';
 import Button from 'sentry/components/button';
 import Confirm from 'sentry/components/confirm';
@@ -49,6 +50,7 @@ import {
   IssueAlertRuleAction,
   IssueAlertRuleActionTemplate,
   IssueAlertRuleConditionTemplate,
+  ProjectAlertRuleStats,
   UnsavedIssueAlertRule,
 } from 'sentry/types/alerts';
 import {metric} from 'sentry/utils/analytics';
@@ -59,6 +61,7 @@ import recreateRoute from 'sentry/utils/recreateRoute';
 import routeTitleGen from 'sentry/utils/routeTitle';
 import withOrganization from 'sentry/utils/withOrganization';
 import withProjects from 'sentry/utils/withProjects';
+import PreviewChart from 'sentry/views/alerts/rules/issue/previewChart';
 import {
   CHANGE_ALERT_CONDITION_IDS,
   CHANGE_ALERT_PLACEHOLDERS_LABELS,
@@ -135,6 +138,7 @@ type State = AsyncView['state'] & {
   };
   environments: Environment[] | null;
   project: Project;
+  ruleFireHistory: ProjectAlertRuleStats[];
   uuid: null | string;
   duplicateTargetRule?: UnsavedIssueAlertRule | IssueAlertRule | null;
   ownership?: null | IssueOwnership;
@@ -298,6 +302,32 @@ class IssueRuleEditor extends AsyncView<Props, State> {
     } catch {
       this.handleRuleSaveFailure(t('An error occurred'));
       this.setState({loading: false});
+    }
+  };
+
+  fetchPreview = async () => {
+    const {organization} = this.props;
+    const {project, rule} = this.state;
+    try {
+      const response = await this.api.requestPromise(
+        `/projects/${organization.slug}/${project.slug}/rules/preview`,
+        {
+          method: 'POST',
+          data: {
+            conditions: rule?.conditions || [],
+            filters: rule?.filters || [],
+            actionMatch: rule?.actionMatch || 'all',
+            filterMatch: rule?.filterMatch || 'all',
+            frequency: rule?.frequency || 60,
+          },
+        }
+      );
+      this.setState({ruleFireHistory: response, previewError: null});
+    } catch (err) {
+      this.setState({
+        previewError:
+          'Previews are unavailable for this combination of conditions and filters',
+      });
     }
   };
 
@@ -759,6 +789,17 @@ class IssueRuleEditor extends AsyncView<Props, State> {
     );
   }
 
+  renderPreviewGraph() {
+    const {ruleFireHistory, previewError} = this.state;
+    if (ruleFireHistory && !previewError) {
+      return <PreviewChart ruleFireHistory={ruleFireHistory} />;
+    }
+    if (previewError) {
+      return <PreviewFailedBar>{previewError}</PreviewFailedBar>;
+    }
+    return null;
+  }
+
   renderProjectSelect(disabled: boolean) {
     const {project: _selectedProject, projects, organization} = this.props;
     const {rule} = this.state;
@@ -1148,6 +1189,25 @@ class IssueRuleEditor extends AsyncView<Props, State> {
                     </StyledFieldHelp>
                   </StyledListItem>
                   {this.renderActionInterval(disabled)}
+                  <Feature organization={organization} features={['issue-alert-preview']}>
+                    <StyledListItem>
+                      <StyledListItemSpaced>
+                        <div>
+                          {' '}
+                          {t('Preview history graph')}
+                          <StyledFieldHelp>
+                            {t(
+                              'Shows when this rule would have fired in the past 2 weeks'
+                            )}
+                          </StyledFieldHelp>
+                        </div>
+                        <Button onClick={this.fetchPreview} type="button">
+                          Generate Preview
+                        </Button>
+                      </StyledListItemSpaced>
+                    </StyledListItem>
+                    {this.renderPreviewGraph()}
+                  </Feature>
                   <StyledListItem>{t('Establish ownership')}</StyledListItem>
                   {this.renderRuleName(disabled)}
                   {this.renderTeamSelect(disabled)}
@@ -1180,6 +1240,11 @@ const StyledAlert = styled(Alert)`
 const StyledListItem = styled(ListItem)`
   margin: ${space(2)} 0 ${space(1)} 0;
   font-size: ${p => p.theme.fontSizeExtraLarge};
+`;
+
+const StyledListItemSpaced = styled('div')`
+  display: flex;
+  justify-content: space-between;
 `;
 
 const StyledFieldHelp = styled(FieldHelp)`
@@ -1284,4 +1349,13 @@ const StyledField = styled(Field)<{extraMargin?: boolean}>`
 
 const Main = styled(Layout.Main)`
   padding: ${space(2)} ${space(4)};
+`;
+
+const PreviewFailedBar = styled('div')`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 30px;
+  font-size: 14px;
+  text-align: center;
 `;

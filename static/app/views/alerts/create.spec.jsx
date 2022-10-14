@@ -1,4 +1,5 @@
 import selectEvent from 'react-select-event';
+import moment from 'moment';
 
 import {initializeOrg} from 'sentry-test/initializeOrg';
 import {act, render, screen, userEvent, waitFor} from 'sentry-test/reactTestingLibrary';
@@ -437,6 +438,53 @@ describe('ProjectAlertsCreate', function () {
           });
         });
       });
+    });
+  });
+
+  describe('test preview chart', () => {
+    const organization = TestStubs.Organization({features: ['issue-alert-preview']});
+    afterAll(jest.clearAllMocks);
+    it('generate valid preview chart', async () => {
+      const mock = MockApiClient.addMockResponse({
+        url: '/projects/org-slug/project-slug/rules/preview',
+        method: 'POST',
+        body: [
+          {datetime: moment().subtract(2, 'days'), count: 1},
+          {datetime: moment().subtract(1, 'days'), count: 2},
+          {datetime: moment(), count: 3},
+        ],
+      });
+      createWrapper({organization});
+      await userEvent.click(screen.getByText('Generate Preview'));
+      expect(mock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          data: {
+            actionMatch: 'all',
+            conditions: [],
+            filterMatch: 'all',
+            filters: [],
+            frequency: 30,
+          },
+        })
+      );
+      expect(screen.getByText('Alerts Triggered')).toBeInTheDocument();
+      expect(screen.getByText('Total Alerts')).toBeInTheDocument();
+    });
+
+    it('invalid preview chart', async () => {
+      MockApiClient.addMockResponse({
+        url: '/projects/org-slug/project-slug/rules/preview',
+        method: 'POST',
+        statusCode: 400,
+      });
+      createWrapper({organization});
+      await userEvent.click(screen.getByText('Generate Preview'));
+      expect(
+        screen.getByText(
+          'Previews are unavailable for this combination of conditions and filters'
+        )
+      ).toBeInTheDocument();
     });
   });
 });

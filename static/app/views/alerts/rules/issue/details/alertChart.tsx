@@ -157,17 +157,17 @@ class AlertChart extends AsyncComponent<Props, State> {
 
 export default withRouter(AlertChart);
 
-const ChartHeader = styled('div')`
+export const ChartHeader = styled('div')`
   margin-bottom: ${space(3)};
 `;
 
-const ChartFooter = styled(PanelFooter)`
+export const ChartFooter = styled(PanelFooter)`
   display: flex;
   align-items: center;
   padding: ${space(1)} 20px;
 `;
 
-const FooterHeader = styled(SectionHeading)`
+export const FooterHeader = styled(SectionHeading)`
   display: flex;
   align-items: center;
   margin: 0;
@@ -176,13 +176,13 @@ const FooterHeader = styled(SectionHeading)`
   line-height: 1;
 `;
 
-const FooterValue = styled('div')`
+export const FooterValue = styled('div')`
   display: flex;
   align-items: center;
   margin: 0 ${space(1)};
 `;
 
 /* Override padding to make chart appear centered */
-const StyledPanelBody = styled(PanelBody)`
+export const StyledPanelBody = styled(PanelBody)`
   padding-right: 6px;
 `;
