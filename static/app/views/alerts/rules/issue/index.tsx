@@ -139,7 +139,7 @@ type State = AsyncView['state'] & {
   environments: Environment[] | null;
   previewError: null | string;
   project: Project;
-  ruleFireHistory: ProjectAlertRuleStats[];
+  ruleFireHistory: ProjectAlertRuleStats[] | null;
   uuid: null | string;
   duplicateTargetRule?: UnsavedIssueAlertRule | IssueAlertRule | null;
   ownership?: null | IssueOwnership;
@@ -310,6 +310,10 @@ class IssueRuleEditor extends AsyncView<Props, State> {
   fetchPreview = async () => {
     const {organization} = this.props;
     const {project, rule} = this.state;
+
+    if (!rule) {
+      return;
+    }
     this.setState({loadingPreview: true});
     try {
       const response = await this.api.requestPromise(

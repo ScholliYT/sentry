@@ -1,7 +1,6 @@
 import styled from '@emotion/styled';
 
-import {AreaChart} from 'sentry/components/charts/areaChart';
-import ChartZoom from 'sentry/components/charts/chartZoom';
+import {AreaChart, AreaChartSeries} from 'sentry/components/charts/areaChart';
 import {HeaderTitleLegend, SectionHeading} from 'sentry/components/charts/styles';
 import {Panel, PanelBody, PanelFooter} from 'sentry/components/panels';
 import Placeholder from 'sentry/components/placeholder';
@@ -14,11 +13,11 @@ type Props = {
   ruleFireHistory: ProjectAlertRuleStats[];
 };
 
-const PreviewChart = (props: Props) => {
-  const renderChart = ruleFireHistory => {
-    const series = {
+const PreviewChart = ({ruleFireHistory}: Props) => {
+  const renderChart = fireHistory => {
+    const series: AreaChartSeries = {
       seriesName: 'Alerts Triggered',
-      data: ruleFireHistory.map(alert => ({
+      data: fireHistory.map(alert => ({
         name: alert.date,
         value: alert.count,
       })),
@@ -28,29 +27,23 @@ const PreviewChart = (props: Props) => {
     };
 
     return (
-      <ChartZoom>
-        {zoomRenderProps => (
-          <AreaChart
-            {...zoomRenderProps}
-            isGroupedByDate
-            showTimeInTooltip
-            grid={{
-              left: space(0.25),
-              right: space(2),
-              top: space(3),
-              bottom: 0,
-            }}
-            yAxis={{
-              minInterval: 1,
-            }}
-            series={[series]}
-          />
-        )}
-      </ChartZoom>
+      <AreaChart
+        isGroupedByDate
+        showTimeInTooltip
+        grid={{
+          left: space(0.25),
+          right: space(2),
+          top: space(3),
+          bottom: 0,
+        }}
+        yAxis={{
+          minInterval: 1,
+        }}
+        series={[series]}
+      />
     );
   };
 
-  const {ruleFireHistory} = props;
   const totalAlertsTriggered = ruleFireHistory.reduce((acc, curr) => acc + curr.count, 0);
 
   return (
