@@ -1,0 +1,46 @@
+on:
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch:
+    inputs:
+      pr:
+        required: true
+        description: pr number
+      co_authored_by:
+        required: true
+        description: '`name <email>` for triggering user'
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    if: |
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(
+          format(fromJSON('"\r\n{0}\r\n"'), github.event.comment.body),
+          fromJSON('"\r\nrevert me please\r\n"')
+        )
+      ) || (
+        github.event_name == 'workflow_dispatch'
+      )
+    steps:
+    - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8  # v3
+      with:
+        token: ${{ secrets.BUMP_SENTRY_TOKEN }}
+    - uses: getsentry/action-fast-revert@75c8c4b1847f96bf39b75c88b6aa71901d0e75db  # v1.0.0
+      with:
+        pr: ${{ github.event.issue.number || github.event.inputs.pr }}
+        co_authored_by: ${{ github.event.inputs.co_authored_by || format('{0} <{1}+{0}@users.noreply.github.com>', github.event.sender.login, github.event.sender.id) }}
+        committer_name: github-actions
+        committer_email: 41898282+github-actions[bot]@users.noreply.github.com>
+        token: ${{ secrets.BUMP_SENTRY_TOKEN }}
+    - name: comment on failure
+      run: |
+        curl \
+            --silent \
+            -X POST \
+            -H 'Authorization: token ${{ github.token }}' \
+            -d'{"body": "revert failed (conflict? already reverted?) -- [check the logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"}' \
+            https://api.github.com/repositories/${{ github.event.repository.id }}/issues/${{ github.event.issue.number || github.event.inputs.pr }}/comments
+      if: failure()
