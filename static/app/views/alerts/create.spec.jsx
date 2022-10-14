@@ -443,7 +443,9 @@ describe('ProjectAlertsCreate', function () {
 
   describe('test preview chart', () => {
     const organization = TestStubs.Organization({features: ['issue-alert-preview']});
-    afterAll(jest.clearAllMocks);
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
     it('generate valid preview chart', async () => {
       const mock = MockApiClient.addMockResponse({
         url: '/projects/org-slug/project-slug/rules/preview',
@@ -455,31 +457,36 @@ describe('ProjectAlertsCreate', function () {
         ],
       });
       createWrapper({organization});
-      await userEvent.click(screen.getByText('Generate Preview'));
-      expect(mock).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          data: {
-            actionMatch: 'all',
-            conditions: [],
-            filterMatch: 'all',
-            filters: [],
-            frequency: 30,
-          },
-        })
-      );
+      userEvent.click(screen.getByText('Generate Preview'));
+      await waitFor(() => {
+        expect(mock).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            data: {
+              actionMatch: 'all',
+              conditions: [],
+              filterMatch: 'all',
+              filters: [],
+              frequency: 30,
+            },
+          })
+        );
+      });
       expect(screen.getByText('Alerts Triggered')).toBeInTheDocument();
       expect(screen.getByText('Total Alerts')).toBeInTheDocument();
     });
 
     it('invalid preview chart', async () => {
-      MockApiClient.addMockResponse({
+      const mock = MockApiClient.addMockResponse({
         url: '/projects/org-slug/project-slug/rules/preview',
         method: 'POST',
         statusCode: 400,
       });
       createWrapper({organization});
-      await userEvent.click(screen.getByText('Generate Preview'));
+      userEvent.click(screen.getByText('Generate Preview'));
+      await waitFor(() => {
+        expect(mock).toHaveBeenCalled();
+      });
       expect(
         screen.getByText(
           'Previews are unavailable for this combination of conditions and filters'

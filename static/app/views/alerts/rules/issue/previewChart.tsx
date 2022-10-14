@@ -1,33 +1,21 @@
-// eslint-disable-next-line no-restricted-imports
-import {Component} from 'react';
+import styled from '@emotion/styled';
 
 import {AreaChart} from 'sentry/components/charts/areaChart';
 import ChartZoom from 'sentry/components/charts/chartZoom';
-import {HeaderTitleLegend} from 'sentry/components/charts/styles';
-import {Panel, PanelBody} from 'sentry/components/panels';
+import {HeaderTitleLegend, SectionHeading} from 'sentry/components/charts/styles';
+import {Panel, PanelBody, PanelFooter} from 'sentry/components/panels';
 import Placeholder from 'sentry/components/placeholder';
 import {t} from 'sentry/locale';
 import space from 'sentry/styles/space';
 import {ProjectAlertRuleStats} from 'sentry/types/alerts';
 import getDynamicText from 'sentry/utils/getDynamicText';
-import {
-  ChartFooter,
-  ChartHeader,
-  FooterHeader,
-  FooterValue,
-  StyledPanelBody,
-} from 'sentry/views/alerts/rules/issue/details/alertChart';
 
 type Props = {
   ruleFireHistory: ProjectAlertRuleStats[];
 };
 
-type State = Component['state'];
-
-class PreviewChart extends Component<Props, State> {
-  renderChart() {
-    const {ruleFireHistory} = this.props;
-
+const PreviewChart = (props: Props) => {
+  const renderChart = ruleFireHistory => {
     const series = {
       seriesName: 'Alerts Triggered',
       data: ruleFireHistory.map(alert => ({
@@ -60,43 +48,58 @@ class PreviewChart extends Component<Props, State> {
         )}
       </ChartZoom>
     );
-  }
+  };
 
-  renderEmpty() {
-    return (
-      <Panel>
-        <PanelBody withPadding>
-          <Placeholder height="200px" />
-        </PanelBody>
-      </Panel>
-    );
-  }
+  const {ruleFireHistory} = props;
+  const totalAlertsTriggered = ruleFireHistory.reduce((acc, curr) => acc + curr.count, 0);
 
-  render() {
-    const {ruleFireHistory} = this.props;
-    const totalAlertsTriggered = ruleFireHistory.reduce(
-      (acc, curr) => acc + curr.count,
-      0
-    );
-
-    return (
-      <Panel>
-        <StyledPanelBody withPadding>
-          <ChartHeader>
-            <HeaderTitleLegend>{t('Alerts Triggered')}</HeaderTitleLegend>
-          </ChartHeader>
-          {getDynamicText({
-            value: this.renderChart(),
-            fixed: <Placeholder height="200px" testId="skeleton-ui" />,
-          })}
-        </StyledPanelBody>
-        <ChartFooter>
-          <FooterHeader>{t('Total Alerts')}</FooterHeader>
-          <FooterValue>{totalAlertsTriggered.toLocaleString()}</FooterValue>
-        </ChartFooter>
-      </Panel>
-    );
-  }
-}
+  return (
+    <Panel>
+      <StyledPanelBody withPadding>
+        <ChartHeader>
+          <HeaderTitleLegend>{t('Alerts Triggered')}</HeaderTitleLegend>
+        </ChartHeader>
+        {getDynamicText({
+          value: renderChart(ruleFireHistory),
+          fixed: <Placeholder height="200px" testId="skeleton-ui" />,
+        })}
+      </StyledPanelBody>
+      <ChartFooter>
+        <FooterHeader>{t('Total Alerts')}</FooterHeader>
+        <FooterValue>{totalAlertsTriggered.toLocaleString()}</FooterValue>
+      </ChartFooter>
+    </Panel>
+  );
+};
 
 export default PreviewChart;
+
+const ChartHeader = styled('div')`
+  margin-bottom: ${space(3)};
+`;
+
+const ChartFooter = styled(PanelFooter)`
+  display: flex;
+  align-items: center;
+  padding: ${space(1)} 20px;
+`;
+
+const FooterHeader = styled(SectionHeading)`
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-weight: bold;
+  font-size: ${p => p.theme.fontSizeMedium};
+  line-height: 1;
+`;
+
+const FooterValue = styled('div')`
+  display: flex;
+  align-items: center;
+  margin: 0 ${space(1)};
+`;
+
+/* Override padding to make chart appear centered */
+const StyledPanelBody = styled(PanelBody)`
+  padding-right: 6px;
+`;

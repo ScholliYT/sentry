@@ -137,6 +137,7 @@ type State = AsyncView['state'] & {
     [key: string]: string[];
   };
   environments: Environment[] | null;
+  previewError: null | string;
   project: Project;
   ruleFireHistory: ProjectAlertRuleStats[];
   uuid: null | string;
@@ -193,6 +194,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
       environments: [],
       uuid: null,
       project,
+      ruleFireHistory: null,
     };
 
     const projectTeamIds = new Set(project.teams.map(({id}) => id));
@@ -308,6 +310,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
   fetchPreview = async () => {
     const {organization} = this.props;
     const {project, rule} = this.state;
+    this.setState({loadingPreview: true});
     try {
       const response = await this.api.requestPromise(
         `/projects/${organization.slug}/${project.slug}/rules/preview`,
@@ -322,11 +325,16 @@ class IssueRuleEditor extends AsyncView<Props, State> {
           },
         }
       );
-      this.setState({ruleFireHistory: response, previewError: null});
+      this.setState({
+        ruleFireHistory: response,
+        previewError: null,
+        loadingPreview: false,
+      });
     } catch (err) {
       this.setState({
         previewError:
           'Previews are unavailable for this combination of conditions and filters',
+        loadingPreview: false,
       });
     }
   };
@@ -795,7 +803,11 @@ class IssueRuleEditor extends AsyncView<Props, State> {
       return <PreviewChart ruleFireHistory={ruleFireHistory} />;
     }
     if (previewError) {
-      return <PreviewFailedBar>{previewError}</PreviewFailedBar>;
+      return (
+        <Alert type="error" showIcon>
+          {previewError}
+        </Alert>
+      );
     }
     return null;
   }
@@ -933,7 +945,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
 
   renderBody() {
     const {organization} = this.props;
-    const {project, rule, detailedError, loading, ownership} = this.state;
+    const {project, rule, detailedError, loading, ownership, loadingPreview} = this.state;
     const {actions, filters, conditions, frequency} = rule || {};
 
     const environment =
@@ -1193,7 +1205,6 @@ class IssueRuleEditor extends AsyncView<Props, State> {
                     <StyledListItem>
                       <StyledListItemSpaced>
                         <div>
-                          {' '}
                           {t('Preview history graph')}
                           <StyledFieldHelp>
                             {t(
@@ -1201,7 +1212,11 @@ class IssueRuleEditor extends AsyncView<Props, State> {
                             )}
                           </StyledFieldHelp>
                         </div>
-                        <Button onClick={this.fetchPreview} type="button">
+                        <Button
+                          onClick={this.fetchPreview}
+                          type="button"
+                          disabled={loadingPreview}
+                        >
                           Generate Preview
                         </Button>
                       </StyledListItemSpaced>
@@ -1349,13 +1364,4 @@ const StyledField = styled(Field)<{extraMargin?: boolean}>`
 
 const Main = styled(Layout.Main)`
   padding: ${space(2)} ${space(4)};
-`;
-
-const PreviewFailedBar = styled('div')`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 30px;
-  font-size: 14px;
-  text-align: center;
 `;
